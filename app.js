@@ -619,3 +619,6 @@ const MentorshipDashboard = () => {
 };
 
 export default MentorshipDashboard;
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<MentorshipDashboard />);
