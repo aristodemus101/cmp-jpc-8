@@ -77,36 +77,39 @@
           ];
 
           // Load data from Firebase on mount
-          useEffect(() => {
-            loadFromFirebase();
-          }, []);
+         useEffect(() => {
+  // Students real-time listener
+  const unsubscribeStudents = db.collection('students').onSnapshot(snapshot => {
+    const updatedStudents = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    setStudents(updatedStudents);
+  });
 
-          const loadFromFirebase = async () => {
-            setLoading(true);
-            try {
-              const studentsSnap = await db.collection('students').get();
-              const mentorsSnap = await db.collection('mentors').get();
-              const assignmentsSnap = await db.collection('assignments').get();
-              const gdGroupsSnap = await db.collection('gdGroups').get();
+  // Mentors real-time listener
+  const unsubscribeMentors = db.collection('mentors').onSnapshot(snapshot => {
+    const updatedMentors = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    setMentors(updatedMentors);
+  });
 
-              if (!studentsSnap.empty) {
-                setStudents(studentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-              }
-              if (!mentorsSnap.empty) {
-                setMentors(mentorsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-              }
-              if (!assignmentsSnap.empty) {
-                setAssignments(assignmentsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-                setSelectedView('dashboard');
-              }
-              if (!gdGroupsSnap.empty) {
-                setGdGroups(gdGroupsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-              }
-            } catch (error) {
-              console.error('Error loading from Firebase:', error);
-            }
-            setLoading(false);
-          };
+  // Assignments real-time listener
+  const unsubscribeAssignments = db.collection('assignments').onSnapshot(snapshot => {
+    const updatedAssignments = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    setAssignments(updatedAssignments);
+  });
+
+  // GD Groups real-time listener
+  const unsubscribeGdGroups = db.collection('gdGroups').onSnapshot(snapshot => {
+    const updatedGdGroups = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    setGdGroups(updatedGdGroups);
+  });
+
+  // Cleanup listeners on unmount
+  return () => {
+    unsubscribeStudents();
+    unsubscribeMentors();
+    unsubscribeAssignments();
+    unsubscribeGdGroups();
+  };
+}, []);
 
           // Real-time listener for GD status updates
           useEffect(() => {
