@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IIFT GD Tracker - Real-time</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CMP GD Tracker</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@heroicons/react/24/outline/esm/index.js" type="module"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div id="root"></div>
-    
-    <script type="text/babel">
+
+<body class="bg-gray-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ================== FIREBASE SETUP ==================
         const firebaseConfig = {
           apiKey: "AIzaSyA0WITtGofY4WvQb08sZ96RNLE1rM5_Udw",
           authDomain: "iift-mentorship-project.firebaseapp.com",
@@ -26,636 +26,264 @@
           appId: "1:185893652365:web:2e45a3833c1088a39d1fc4",
           measurementId: "G-QQKZG0YEDY"
         };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        // Initialize Firebase
-        if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-        }
-        const db = firebase.firestore();
+    // ================== MAIN APP ==================
+    const GDTracker = () => {
+      const [gdList, setGdList] = React.useState([]);
+      const [showForm, setShowForm] = React.useState(false);
+      const [loading, setLoading] = React.useState(true);
+      const [newGD, setNewGD] = React.useState({
+        timeSlot: "",
+        groupName: "",
+        meetLink: "",
+        students: [],
+        panelists: [],
+        spocs: "",
+        status: "Scheduled",
+      });
 
-        const { useState, useEffect } = React;
-        
-        const Icons = {
-          Plus: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
-          Users: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>,
-          Calendar: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>,
-          Edit: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>,
-          Trash: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
-          Download: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>,
-          Upload: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>,
-          Save: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
-          X: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
-          Paperclip: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-        };
+      // ---- Fetch existing GDs ----
+      React.useEffect(() => {
+        const unsub = db.collection("gd-tracker").onSnapshot((snap) => {
+          setGdList(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+          setLoading(false);
+        });
+        return () => unsub();
+      }, []);
 
-        const GDTracker = () => {
-          const [gdGroups, setGdGroups] = useState([]);
-          const [stats, setStats] = useState({ totalStudents: 0, totalMentors: 0, totalGDs: 0 });
-          const [selectedView, setSelectedView] = useState('tracker');
-          const [editingStats, setEditingStats] = useState(false);
-          const [loading, setLoading] = useState(false);
-          
-          const [newGD, setNewGD] = useState({
-            timing: '',
-            groupName: '',
-            students: [],
-            meetLink: '',
-            panelists: [],
-            spocs: '',
-            status: 'pending'
-          });
+      // ---- Add GD ----
+      const handleAddGD = async () => {
+        if (!newGD.timeSlot || !newGD.groupName) return alert("Fill all mandatory fields");
+        await db.collection("gd-tracker").add(newGD);
+        setNewGD({
+          timeSlot: "",
+          groupName: "",
+          meetLink: "",
+          students: [],
+          panelists: [],
+          spocs: "",
+          status: "Scheduled",
+        });
+        setShowForm(false);
+      };
 
-          const [tempStats, setTempStats] = useState({ totalStudents: 0, totalMentors: 0, totalGDs: 0 });
+      // ---- Add/Remove Helpers ----
+      const addStudent = () => setNewGD({ ...newGD, students: [...newGD.students, { name: "", email: "", attachment: "" }] });
+      const addPanelist = () => setNewGD({ ...newGD, panelists: [...newGD.panelists, { name: "", email: "", phone: "" }] });
+      const updateStudent = (i, k, v) => {
+        const s = [...newGD.students]; s[i][k] = v; setNewGD({ ...newGD, students: s });
+      };
+      const updatePanelist = (i, k, v) => {
+        const p = [...newGD.panelists]; p[i][k] = v; setNewGD({ ...newGD, panelists: p });
+      };
+      const removeStudent = (i) => setNewGD({ ...newGD, students: newGD.students.filter((_, idx) => idx !== i) });
+      const removePanelist = (i) => setNewGD({ ...newGD, panelists: newGD.panelists.filter((_, idx) => idx !== i) });
 
-          // Load data from Firebase
-          useEffect(() => {
-            loadFromFirebase();
-          }, []);
+      // ---- UI ----
+      return (
+        <div className="max-w-5xl mx-auto py-8 px-4">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-indigo-700">CMP GD Tracker</h1>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+            >
+              {showForm ? "Close" : "Add New GD"}
+            </button>
+          </div>
 
-          // Real-time listener for GD groups
-          useEffect(() => {
-            const unsubscribe = db.collection('gdGroups').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
-              const groups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              setGdGroups(groups);
-            });
-            return () => unsubscribe();
-          }, []);
+          {showForm && (
+            <div className="bg-white shadow-lg rounded-xl p-6 mb-8">
+              <h2 className="text-lg font-semibold mb-4 text-gray-800">Add New GD</h2>
 
-          // Real-time listener for stats
-          useEffect(() => {
-            const unsubscribe = db.collection('stats').doc('dashboard').onSnapshot((doc) => {
-              if (doc.exists) {
-                const data = doc.data();
-                setStats(data);
-                setTempStats(data);
-              }
-            });
-            return () => unsubscribe();
-          }, []);
-
-          const loadFromFirebase = async () => {
-            setLoading(true);
-            try {
-              const gdSnap = await db.collection('gdGroups').orderBy('createdAt', 'desc').get();
-              const statsSnap = await db.collection('stats').doc('dashboard').get();
-              
-              if (!gdSnap.empty) {
-                setGdGroups(gdSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-              }
-              
-              if (statsSnap.exists) {
-                const data = statsSnap.data();
-                setStats(data);
-                setTempStats(data);
-              } else {
-                // Initialize stats if they don't exist
-                await db.collection('stats').doc('dashboard').set({
-                  totalStudents: 0,
-                  totalMentors: 0,
-                  totalGDs: 0
-                });
-              }
-            } catch (error) {
-              console.error('Error loading:', error);
-            }
-            setLoading(false);
-          };
-
-          const addStudent = () => {
-            setNewGD({
-              ...newGD,
-              students: [...newGD.students, { name: '', email: '', attachment: '' }]
-            });
-          };
-
-          const updateStudent = (index, field, value) => {
-            const updatedStudents = [...newGD.students];
-            updatedStudents[index][field] = value;
-            setNewGD({ ...newGD, students: updatedStudents });
-          };
-
-          const removeStudent = (index) => {
-            const updatedStudents = newGD.students.filter((_, i) => i !== index);
-            setNewGD({ ...newGD, students: updatedStudents });
-          };
-
-          const addPanelist = () => {
-            setNewGD({
-              ...newGD,
-              panelists: [...newGD.panelists, { name: '', email: '', phone: '' }]
-            });
-          };
-
-          const updatePanelist = (index, field, value) => {
-            const updatedPanelists = [...newGD.panelists];
-            updatedPanelists[index][field] = value;
-            setNewGD({ ...newGD, panelists: updatedPanelists });
-          };
-
-          const removePanelist = (index) => {
-            const updatedPanelists = newGD.panelists.filter((_, i) => i !== index);
-            setNewGD({ ...newGD, panelists: updatedPanelists });
-          };
-
-          const handleAddGD = async () => {
-            try {
-              await db.collection('gdGroups').add({
-                ...newGD,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-              });
-              
-              // Increment GD count
-              await db.collection('stats').doc('dashboard').update({
-                totalGDs: firebase.firestore.FieldValue.increment(1)
-              });
-              
-              // Reset form
-              setNewGD({
-                timing: '',
-                groupName: '',
-                students: [],
-                meetLink: '',
-                panelists: [],
-                spocs: '',
-                status: 'pending'
-              });
-              
-              setSelectedView('tracker');
-              alert('GD added successfully!');
-            } catch (error) {
-              console.error('Error adding GD:', error);
-              alert('Error adding GD: ' + error.message);
-            }
-          };
-
-          const handleUpdateGD = async (id, field, value) => {
-            try {
-              await db.collection('gdGroups').doc(id).update({ [field]: value });
-            } catch (error) {
-              console.error('Error updating:', error);
-            }
-          };
-
-          const handleDeleteGD = async (id) => {
-            if (window.confirm('Are you sure you want to delete this GD?')) {
-              try {
-                await db.collection('gdGroups').doc(id).delete();
-                
-                // Decrement GD count
-                await db.collection('stats').doc('dashboard').update({
-                  totalGDs: firebase.firestore.FieldValue.increment(-1)
-                });
-                
-                alert('GD deleted successfully!');
-              } catch (error) {
-                console.error('Error deleting:', error);
-                alert('Error deleting GD: ' + error.message);
-              }
-            }
-          };
-
-          const handleSaveStats = async () => {
-            try {
-              await db.collection('stats').doc('dashboard').set(tempStats);
-              setEditingStats(false);
-              alert('Stats updated successfully!');
-            } catch (error) {
-              console.error('Error updating stats:', error);
-            }
-          };
-
-          const handleStatsChange = (field, value) => {
-            const numValue = value === '' ? 0 : parseInt(value) || 0;
-            setTempStats({ ...tempStats, [field]: numValue });
-          };
-
-          const exportToCSV = () => {
-            const headers = ['Timing', 'Group', 'Students', 'Meet Link', 'Panelists', 'SPOCs', 'Status'];
-            const rows = gdGroups.map(gd => [
-              gd.timing,
-              gd.groupName,
-              gd.students?.map(s => `${s.name} (${s.email})`).join('; ') || '',
-              gd.meetLink,
-              gd.panelists?.map(p => `${p.name} - ${p.phone}`).join('; ') || '',
-              gd.spocs,
-              gd.status
-            ]);
-            
-            const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'gd_tracker.csv';
-            link.click();
-          };
-
-          if (loading) {
-            return (
-              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-xl font-semibold">Loading...</p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Time Slot*</label>
+                  <input
+                    type="text"
+                    value={newGD.timeSlot}
+                    onChange={(e) => setNewGD({ ...newGD, timeSlot: e.target.value })}
+                    placeholder="e.g., 12–2 PM"
+                    className="w-full border rounded px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Group Name*</label>
+                  <input
+                    type="text"
+                    value={newGD.groupName}
+                    onChange={(e) => setNewGD({ ...newGD, groupName: e.target.value })}
+                    placeholder="e.g., CMP - GD 5"
+                    className="w-full border rounded px-3 py-2"
+                  />
                 </div>
               </div>
-            );
-          }
 
-          return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-              <div className="max-w-7xl mx-auto">
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h1 className="text-3xl font-bold text-indigo-900">IIFT GD Tracker</h1>
-                      <p className="text-gray-600">October 16-19, 2025 • Real-time Sync 🔄</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={exportToCSV}
-                        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                      >
-                        <Icons.Download size={20} />
-                        Export CSV
-                      </button>
-                    </div>
-                  </div>
+              <div className="mt-3">
+                <label className="block text-sm font-medium mb-1">Meet Link</label>
+                <input
+                  type="text"
+                  value={newGD.meetLink}
+                  onChange={(e) => setNewGD({ ...newGD, meetLink: e.target.value })}
+                  placeholder="Paste Meet / Zoom link"
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
 
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="bg-blue-100 p-4 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Icons.Users size={24} className="text-blue-600" />
-                          <span className="font-semibold">Total Students</span>
-                        </div>
-                        {!editingStats && (
-                          <button onClick={() => setEditingStats(true)} className="text-blue-600">
-                            <Icons.Edit size={16} />
-                          </button>
-                        )}
-                      </div>
-                      {editingStats ? (
-                        <input
-                          type="number"
-                          value={tempStats.totalStudents || ''}
-                          onChange={(e) => handleStatsChange('totalStudents', e.target.value)}
-                          className="text-2xl font-bold text-blue-700 border rounded px-2 py-1 w-full"
-                          placeholder="0"
-                        />
-                      ) : (
-                        <p className="text-3xl font-bold text-blue-700">{stats.totalStudents || 0}</p>
-                      )}
-                    </div>
-                    
-                    <div className="bg-green-100 p-4 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Icons.Users size={24} className="text-green-600" />
-                          <span className="font-semibold">Total Mentors</span>
-                        </div>
-                      </div>
-                      {editingStats ? (
-                        <input
-                          type="number"
-                          value={tempStats.totalMentors || ''}
-                          onChange={(e) => handleStatsChange('totalMentors', e.target.value)}
-                          className="text-2xl font-bold text-green-700 border rounded px-2 py-1 w-full"
-                          placeholder="0"
-                        />
-                      ) : (
-                        <p className="text-3xl font-bold text-green-700">{stats.totalMentors || 0}</p>
-                      )}
-                    </div>
-                    
-                    <div className="bg-orange-100 p-4 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Icons.Calendar size={24} className="text-orange-600" />
-                          <span className="font-semibold">Total GDs</span>
-                        </div>
-                      </div>
-                      <p className="text-3xl font-bold text-orange-700">{stats.totalGDs || 0}</p>
-                    </div>
-                  </div>
-
-                  {editingStats && (
-                    <div className="flex gap-2 justify-end mb-4">
-                      <button
-                        onClick={() => {
-                          setTempStats(stats);
-                          setEditingStats(false);
-                        }}
-                        className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleSaveStats}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-                      >
-                        <Icons.Save size={16} />
-                        Save Stats
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 mb-4">
-                    <button
-                      onClick={() => setSelectedView('tracker')}
-                      className={`px-4 py-2 rounded-lg ${selectedView === 'tracker' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
-                    >
-                      GD Tracker
-                    </button>
-                    <button
-                      onClick={() => setSelectedView('add')}
-                      className={`px-4 py-2 rounded-lg ${selectedView === 'add' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
-                    >
-                      Add GD
-                    </button>
-                  </div>
+              {/* STUDENTS */}
+              <div className="mt-4">
+                <div className="flex justify-between mb-2">
+                  <label className="font-medium">Students</label>
+                  <button onClick={addStudent} className="text-indigo-600 text-sm">+ Add Student</button>
                 </div>
-
-                {selectedView === 'tracker' && (
-                  <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-2xl font-bold mb-4">GD Groups ({gdGroups.length})</h2>
-                    
-                    {gdGroups.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
-                        <p className="mb-4">No GD groups yet</p>
-                        <button
-                          onClick={() => setSelectedView('add')}
-                          className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
-                        >
-                          Add Your First GD
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {gdGroups.map((gd) => (
-                          <div key={gd.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-4 mb-2">
-                                  <span className="text-lg font-bold text-indigo-600">{gd.groupName}</span>
-                                  <span className="text-sm text-gray-600">{gd.timing}</span>
-                                  <select
-                                    value={gd.status}
-                                    onChange={(e) => handleUpdateGD(gd.id, 'status', e.target.value)}
-                                    className="text-xs border rounded px-2 py-1"
-                                  >
-                                    <option value="pending">Pending</option>
-                                    <option value="in-progress">In Progress</option>
-                                    <option value="completed">Completed</option>
-                                  </select>
-                                </div>
-                                
-                                {gd.meetLink && (
-                                  <a href={gd.meetLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
-                                    🔗 Join Meeting
-                                  </a>
-                                )}
-                              </div>
-                              
-                              <button
-                                onClick={() => handleDeleteGD(gd.id)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                <Icons.Trash size={20} />
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <h4 className="font-semibold text-sm mb-2">Students:</h4>
-                                {gd.students && gd.students.length > 0 ? (
-                                  <ul className="text-sm space-y-1">
-                                    {gd.students.map((student, idx) => (
-                                      <li key={idx} className="flex items-center gap-2">
-                                        <span>• {student.name}</span>
-                                        {student.attachment && (
-                                          <a href={student.attachment} target="_blank" rel="noopener noreferrer" className="text-blue-600">
-                                            <Icons.Paperclip size={14} />
-                                          </a>
-                                        )}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-sm text-gray-500">No students added</p>
-                                )}
-                              </div>
-
-                              <div>
-                                <h4 className="font-semibold text-sm mb-2">Panelists:</h4>
-                                {gd.panelists && gd.panelists.length > 0 ? (
-                                  <ul className="text-sm space-y-1">
-                                    {gd.panelists.map((panelist, idx) => (
-                                      <li key={idx}>
-                                        • {panelist.name} ({panelist.phone})
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-sm text-gray-500">No panelists added</p>
-                                )}
-                              </div>
-                            </div>
-
-                            {gd.spocs && (
-                              <div className="mt-3 pt-3 border-t">
-                                <span className="text-xs text-gray-600">SPOCs: {gd.spocs}</span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {selectedView === 'add' && (
-                  <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-2xl font-bold mb-4">Add New GD</h2>
-                    
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Timing</label>
-                          <input
-                            type="text"
-                            value={newGD.timing}
-                            onChange={(e) => setNewGD({...newGD, timing: e.target.value})}
-                            placeholder="e.g., 18:00"
-                            className="w-full border rounded px-3 py-2"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Group Name/Number</label>
-                          <input
-                            type="text"
-                            value={newGD.groupName}
-                            onChange={(e) => setNewGD({...newGD, groupName: e.target.value})}
-                            placeholder="e.g., G1"
-                            className="w-full border rounded px-3 py-2"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Meet Link</label>
-                        <input
-                          type="url"
-                          value={newGD.meetLink}
-                          onChange={(e) => setNewGD({...newGD, meetLink: e.target.value})}
-                          placeholder="https://meet.google.com/..."
-                          className="w-full border rounded px-3 py-2"
-                        />
-                      </div>
-
-                      {/* Students Section */}
-                      <div className="border-t pt-4">
-                        <div className="flex justify-between items-center mb-3">
-                          <h3 className="font-semibold">Students</h3>
-                          <button
-                            onClick={addStudent}
-                            className="flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
-                          >
-                            <Icons.Plus size={16} />
-                            Add Student
-                          </button>
-                        </div>
-                        
-                        {newGD.students.map((student, idx) => (
-                          <div key={idx} className="grid grid-cols-12 gap-2 mb-3 items-end">
-                            <div className="col-span-4">
-                              <input
-                                type="text"
-                                value={student.name}
-                                onChange={(e) => updateStudent(idx, 'name', e.target.value)}
-                                placeholder="Student Name"
-                                className="w-full border rounded px-3 py-2"
-                              />
-                            </div>
-                            <div className="col-span-4">
-                              <input
-                                type="email"
-                                value={student.email}
-                                onChange={(e) => updateStudent(idx, 'email', e.target.value)}
-                                placeholder="Email"
-                                className="w-full border rounded px-3 py-2"
-                              />
-                            </div>
-                            <div className="col-span-3">
-                              <input
-                                type="url"
-                                value={student.attachment}
-                                onChange={(e) => updateStudent(idx, 'attachment', e.target.value)}
-                                placeholder="Attachment URL (optional)"
-                                className="w-full border rounded px-3 py-2"
-                              />
-                            </div>
-                            <div className="col-span-1">
-                              <button
-                                onClick={() => removeStudent(idx)}
-                                className="w-full bg-red-100 text-red-600 p-2 rounded hover:bg-red-200"
-                              >
-                                <Icons.X size={18} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Panelists Section */}
-                      <div className="border-t pt-4">
-                        <div className="flex justify-between items-center mb-3">
-                          <h3 className="font-semibold">Panelists</h3>
-                          <button
-                            onClick={addPanelist}
-                            className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                          >
-                            <Icons.Plus size={16} />
-                            Add Panelist
-                          </button>
-                        </div>
-                        
-                        {newGD.panelists.map((panelist, idx) => (
-                          <div key={idx} className="grid grid-cols-12 gap-2 mb-3 items-end">
-                            <div className="col-span-4">
-                              <input
-                                type="text"
-                                value={panelist.name}
-                                onChange={(e) => updatePanelist(idx, 'name', e.target.value)}
-                                placeholder="Panelist Name"
-                                className="w-full border rounded px-3 py-2"
-                              />
-                            </div>
-                            <div className="col-span-4">
-                              <input
-                                type="email"
-                                value={panelist.email}
-                                onChange={(e) => updatePanelist(idx, 'email', e.target.value)}
-                                placeholder="Email"
-                                className="w-full border rounded px-3 py-2"
-                              />
-                            </div>
-                            <div className="col-span-3">
-                              <input
-                                type="tel"
-                                value={panelist.phone}
-                                onChange={(e) => updatePanelist(idx, 'phone', e.target.value)}
-                                placeholder="Phone"
-                                className="w-full border rounded px-3 py-2"
-                              />
-                            </div>
-                            <div className="col-span-1">
-                              <button
-                                onClick={() => removePanelist(idx)}
-                                className="w-full bg-red-100 text-red-600 p-2 rounded hover:bg-red-200"
-                              >
-                                <Icons.X size={18} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-1">SPOCs</label>
-                        <input
-                          type="text"
-                          value={newGD.spocs}
-                          onChange={(e) => setNewGD({...newGD, spocs: e.target.value})}
-                          placeholder="e.g., JAY, ADITYA SINGH"
-                          className="w-full border rounded px-3 py-2"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 justify-end mt-6">
+                {newGD.students.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No students added yet.</p>
+                ) : (
+                  newGD.students.map((s, i) => (
+                    <div key={i} className="grid md:grid-cols-3 gap-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={s.name}
+                        onChange={(e) => updateStudent(i, "name", e.target.value)}
+                        className="border rounded px-2 py-1"
+                      />
+                      <input
+                        type="email"
+                        placeholder="Email"
+                        value={s.email}
+                        onChange={(e) => updateStudent(i, "email", e.target.value)}
+                        className="border rounded px-2 py-1"
+                      />
+                      <input
+                        type="url"
+                        placeholder="Attachment link"
+                        value={s.attachment}
+                        onChange={(e) => updateStudent(i, "attachment", e.target.value)}
+                        className="border rounded px-2 py-1"
+                      />
                       <button
-                        onClick={() => setSelectedView('tracker')}
-                        className="px-6 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+                        onClick={() => removeStudent(i)}
+                        className="text-red-600 text-xs col-span-3 text-right"
                       >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleAddGD}
-                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-                      >
-                        <Icons.Save size={20} />
-                        Save GD
+                        Remove
                       </button>
                     </div>
-                  </div>
+                  ))
                 )}
+              </div>
+
+              {/* PANELISTS */}
+              <div className="mt-4">
+                <div className="flex justify-between mb-2">
+                  <label className="font-medium">Panelists</label>
+                  <button onClick={addPanelist} className="text-indigo-600 text-sm">+ Add Panelist</button>
+                </div>
+                {newGD.panelists.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No panelists added yet.</p>
+                ) : (
+                  newGD.panelists.map((p, i) => (
+                    <div key={i} className="grid md:grid-cols-3 gap-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={p.name}
+                        onChange={(e) => updatePanelist(i, "name", e.target.value)}
+                        className="border rounded px-2 py-1"
+                      />
+                      <input
+                        type="email"
+                        placeholder="Email"
+                        value={p.email}
+                        onChange={(e) => updatePanelist(i, "email", e.target.value)}
+                        className="border rounded px-2 py-1"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Phone"
+                        value={p.phone}
+                        onChange={(e) => updatePanelist(i, "phone", e.target.value)}
+                        className="border rounded px-2 py-1"
+                      />
+                      <button
+                        onClick={() => removePanelist(i)}
+                        className="text-red-600 text-xs col-span-3 text-right"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* SPOC */}
+              <div className="mt-3">
+                <label className="block text-sm font-medium mb-1">SPOCs</label>
+                <input
+                  type="text"
+                  value={newGD.spocs}
+                  onChange={(e) => setNewGD({ ...newGD, spocs: e.target.value })}
+                  placeholder="Comma separated names / contacts"
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+
+              {/* ADD BUTTON */}
+              <div className="text-right mt-5">
+                <button
+                  onClick={handleAddGD}
+                  className="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700"
+                >
+                  Add GD
+                </button>
               </div>
             </div>
-          );
-        };
+          )}
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<GDTracker />);
-    </script>
+          {/* GD LIST */}
+          {loading ? (
+            <p className="text-gray-500 text-center mt-10">Loading...</p>
+          ) : gdList.length === 0 ? (
+            <p className="text-gray-500 text-center mt-10">No GDs added yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {gdList.map((gd) => (
+                <div key={gd.id} className="bg-white p-5 rounded-lg shadow flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold text-lg">{gd.groupName}</h3>
+                    <p className="text-sm text-gray-600">🕒 {gd.timeSlot}</p>
+                    <p className="text-sm mt-1">Panelists: {gd.panelists.length}</p>
+                    <p className="text-sm">Students: {gd.students.length}</p>
+                    {gd.meetLink && (
+                      <a
+                        href={gd.meetLink}
+                        target="_blank"
+                        className="text-indigo-600 text-sm underline mt-2 block"
+                      >
+                        Join Meet
+                      </a>
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs px-3 py-1 rounded-full ${
+                      gd.status === "Completed"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {gd.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<GDTracker />);
+  </script>
 </body>
 </html>
