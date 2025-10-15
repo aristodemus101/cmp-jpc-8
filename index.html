@@ -8,32 +8,33 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@heroicons/react/24/outline/esm/index.js" type="module"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-50">
+<body class="bg-slate-50">
   <div id="root"></div>
 
   <script type="text/babel">
-    // ================== FIREBASE SETUP ==================
-        const firebaseConfig = {
-          apiKey: "AIzaSyA0WITtGofY4WvQb08sZ96RNLE1rM5_Udw",
-          authDomain: "iift-mentorship-project.firebaseapp.com",
-          projectId: "iift-mentorship-project",
-          storageBucket: "iift-mentorship-project.firebasestorage.app",
-          messagingSenderId: "185893652365",
-          appId: "1:185893652365:web:2e45a3833c1088a39d1fc4",
-          measurementId: "G-QQKZG0YEDY"
-        };
+    // ================= FIREBASE SETUP =================
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID",
+    };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ================== MAIN APP ==================
+    // ================= MAIN COMPONENT =================
     const GDTracker = () => {
-      const [gdList, setGdList] = React.useState([]);
-      const [showForm, setShowForm] = React.useState(false);
+      const [gds, setGds] = React.useState([]);
       const [loading, setLoading] = React.useState(true);
+      const [showForm, setShowForm] = React.useState(false);
+      const [mentors, setMentors] = React.useState(10);
+      const [students, setStudents] = React.useState(0);
+
       const [newGD, setNewGD] = React.useState({
         timeSlot: "",
         groupName: "",
@@ -41,21 +42,29 @@
         students: [],
         panelists: [],
         spocs: "",
-        status: "Scheduled",
+        status: "Waiting",
       });
 
-      // ---- Fetch existing GDs ----
+      // ---------- Realtime Sync ----------
       React.useEffect(() => {
         const unsub = db.collection("gd-tracker").onSnapshot((snap) => {
-          setGdList(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+          const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setGds(data);
           setLoading(false);
+
+          // update student stats dynamically
+          const totalStudents = data.reduce((acc, g) => acc + (g.students?.length || 0), 0);
+          setStudents(totalStudents);
         });
         return () => unsub();
       }, []);
 
-      // ---- Add GD ----
+      // ---------- CRUD ----------
       const handleAddGD = async () => {
-        if (!newGD.timeSlot || !newGD.groupName) return alert("Fill all mandatory fields");
+        if (!newGD.groupName || !newGD.timeSlot) {
+          alert("Please fill all required fields");
+          return;
+        }
         await db.collection("gd-tracker").add(newGD);
         setNewGD({
           timeSlot: "",
@@ -64,227 +73,302 @@
           students: [],
           panelists: [],
           spocs: "",
-          status: "Scheduled",
+          status: "Waiting",
         });
         setShowForm(false);
       };
 
-      // ---- Add/Remove Helpers ----
-      const addStudent = () => setNewGD({ ...newGD, students: [...newGD.students, { name: "", email: "", attachment: "" }] });
-      const addPanelist = () => setNewGD({ ...newGD, panelists: [...newGD.panelists, { name: "", email: "", phone: "" }] });
-      const updateStudent = (i, k, v) => {
-        const s = [...newGD.students]; s[i][k] = v; setNewGD({ ...newGD, students: s });
+      const deleteGD = async (id) => {
+        if (confirm("Are you sure you want to delete this GD?")) {
+          await db.collection("gd-tracker").doc(id).delete();
+        }
       };
-      const updatePanelist = (i, k, v) => {
-        const p = [...newGD.panelists]; p[i][k] = v; setNewGD({ ...newGD, panelists: p });
-      };
-      const removeStudent = (i) => setNewGD({ ...newGD, students: newGD.students.filter((_, idx) => idx !== i) });
-      const removePanelist = (i) => setNewGD({ ...newGD, panelists: newGD.panelists.filter((_, idx) => idx !== i) });
 
-      // ---- UI ----
+      // ---------- Helpers ----------
+      const addStudent = () =>
+        setNewGD({
+          ...newGD,
+          students: [...newGD.students, { name: "", email: "", attachment: "" }],
+        });
+
+      const addPanelist = () =>
+        setNewGD({
+          ...newGD,
+          panelists: [...newGD.panelists, { name: "", email: "", phone: "" }],
+        });
+
+      const updateStudent = (i, k, v) => {
+        const s = [...newGD.students];
+        s[i][k] = v;
+        setNewGD({ ...newGD, students: s });
+      };
+
+      const updatePanelist = (i, k, v) => {
+        const p = [...newGD.panelists];
+        p[i][k] = v;
+        setNewGD({ ...newGD, panelists: p });
+      };
+
+      const removeStudent = (i) =>
+        setNewGD({ ...newGD, students: newGD.students.filter((_, idx) => idx !== i) });
+
+      const removePanelist = (i) =>
+        setNewGD({ ...newGD, panelists: newGD.panelists.filter((_, idx) => idx !== i) });
+
+      // ---------- Stats ----------
+      const totalGDs = gds.length;
+      const completedGDs = gds.filter((g) => g.status === "Completed").length;
+      const inProgressGDs = gds.filter((g) => g.status === "In Progress").length;
+      const waitingGDs = gds.filter((g) => g.status === "Waiting").length;
+
+      const studentsInCompleted = gds
+        .filter((g) => g.status === "Completed")
+        .reduce((acc, g) => acc + (g.students?.length || 0), 0);
+
+      const studentsInWaiting = gds
+        .filter((g) => g.status === "Waiting")
+        .reduce((acc, g) => acc + (g.students?.length || 0), 0);
+
+      const studentsInPI = Math.round(students * 0.3); // just mock logic
+      const studentsInGD = students - studentsInPI;
+
+      // ---------- UI ----------
       return (
-        <div className="max-w-5xl mx-auto py-8 px-4">
-          <div className="flex justify-between items-center mb-6">
+        <div className="max-w-6xl mx-auto py-8 px-4">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-indigo-700">CMP GD Tracker</h1>
             <button
               onClick={() => setShowForm(!showForm)}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+              className="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700"
             >
-              {showForm ? "Close" : "Add New GD"}
+              {showForm ? "Close Form" : "+ Add New GD"}
             </button>
           </div>
 
+          {/* Stats */}
+          <div className="grid md:grid-cols-3 gap-5 mb-8">
+            {/* GD Stats */}
+            <div className="bg-white shadow rounded-xl p-5">
+              <h2 className="text-lg font-semibold text-slate-800">Total GDs</h2>
+              <p className="text-3xl font-bold text-indigo-700">{totalGDs}</p>
+              <div className="mt-2 text-sm text-gray-600">
+                ✅ Completed: {completedGDs} <br />
+                🔄 In Progress: {inProgressGDs} <br />
+                ⏳ Waiting: {waitingGDs}
+              </div>
+            </div>
+
+            {/* Student Stats */}
+            <div className="bg-white shadow rounded-xl p-5">
+              <h2 className="text-lg font-semibold text-slate-800">Total Students</h2>
+              <p className="text-3xl font-bold text-emerald-600">{students}</p>
+              <div className="mt-2 text-sm text-gray-600">
+                🧠 In PI: {studentsInPI} <br />
+                👥 In GD: {studentsInGD} <br />
+                ✅ Completed: {studentsInCompleted} <br />
+                ⏳ Waiting: {studentsInWaiting}
+              </div>
+            </div>
+
+            {/* Mentors */}
+            <div className="bg-white shadow rounded-xl p-5">
+              <h2 className="text-lg font-semibold text-slate-800">Total Mentors</h2>
+              <input
+                type="number"
+                value={mentors}
+                onChange={(e) => setMentors(parseInt(e.target.value) || 0)}
+                className="text-3xl font-bold text-blue-600 w-20 border-b-2 border-blue-400 focus:outline-none"
+              />
+              <p className="mt-2 text-sm text-gray-600">Editable field</p>
+            </div>
+          </div>
+
+          {/* GD List */}
+          {loading ? (
+            <p className="text-gray-500 text-center">Loading data...</p>
+          ) : gds.length === 0 ? (
+            <p className="text-gray-500 text-center">No GDs added yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {gds.map((gd) => (
+                <div
+                  key={gd.id}
+                  className="bg-white p-5 rounded-lg shadow flex justify-between items-start hover:shadow-md transition"
+                >
+                  <div>
+                    <h3 className="text-lg font-semibold text-indigo-700">{gd.groupName}</h3>
+                    <p className="text-sm text-gray-600">🕒 {gd.timeSlot}</p>
+                    <p className="text-sm">👥 Students: {gd.students.length}</p>
+                    <p className="text-sm">🎓 Panelists: {gd.panelists.length}</p>
+                    {gd.meetLink && (
+                      <a
+                        href={gd.meetLink}
+                        target="_blank"
+                        className="text-indigo-600 text-sm underline mt-1 block"
+                      >
+                        Join Meet
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="text-right">
+                    <span
+                      className={`text-xs px-3 py-1 rounded-full ${
+                        gd.status === "Completed"
+                          ? "bg-green-100 text-green-700"
+                          : gd.status === "In Progress"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {gd.status}
+                    </span>
+                    <button
+                      onClick={() => deleteGD(gd.id)}
+                      className="block text-red-600 text-xs mt-2 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Form */}
           {showForm && (
-            <div className="bg-white shadow-lg rounded-xl p-6 mb-8">
-              <h2 className="text-lg font-semibold mb-4 text-gray-800">Add New GD</h2>
+            <div className="bg-white shadow-lg rounded-xl p-6 mt-8">
+              <h2 className="text-xl font-semibold text-indigo-700 mb-4">Add New GD</h2>
 
               <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Time Slot*</label>
-                  <input
-                    type="text"
-                    value={newGD.timeSlot}
-                    onChange={(e) => setNewGD({ ...newGD, timeSlot: e.target.value })}
-                    placeholder="e.g., 12–2 PM"
-                    className="w-full border rounded px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Group Name*</label>
-                  <input
-                    type="text"
-                    value={newGD.groupName}
-                    onChange={(e) => setNewGD({ ...newGD, groupName: e.target.value })}
-                    placeholder="e.g., CMP - GD 5"
-                    className="w-full border rounded px-3 py-2"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-3">
-                <label className="block text-sm font-medium mb-1">Meet Link</label>
                 <input
                   type="text"
+                  placeholder="Time Slot (e.g., 12–2 PM)"
+                  value={newGD.timeSlot}
+                  onChange={(e) => setNewGD({ ...newGD, timeSlot: e.target.value })}
+                  className="border rounded px-3 py-2"
+                />
+                <input
+                  type="text"
+                  placeholder="Group Name"
+                  value={newGD.groupName}
+                  onChange={(e) => setNewGD({ ...newGD, groupName: e.target.value })}
+                  className="border rounded px-3 py-2"
+                />
+                <input
+                  type="text"
+                  placeholder="Meet Link"
                   value={newGD.meetLink}
                   onChange={(e) => setNewGD({ ...newGD, meetLink: e.target.value })}
-                  placeholder="Paste Meet / Zoom link"
-                  className="w-full border rounded px-3 py-2"
+                  className="border rounded px-3 py-2 col-span-2"
                 />
               </div>
 
-              {/* STUDENTS */}
+              {/* Students */}
               <div className="mt-4">
                 <div className="flex justify-between mb-2">
                   <label className="font-medium">Students</label>
                   <button onClick={addStudent} className="text-indigo-600 text-sm">+ Add Student</button>
                 </div>
-                {newGD.students.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No students added yet.</p>
-                ) : (
-                  newGD.students.map((s, i) => (
-                    <div key={i} className="grid md:grid-cols-3 gap-2 mb-2">
-                      <input
-                        type="text"
-                        placeholder="Name"
-                        value={s.name}
-                        onChange={(e) => updateStudent(i, "name", e.target.value)}
-                        className="border rounded px-2 py-1"
-                      />
-                      <input
-                        type="email"
-                        placeholder="Email"
-                        value={s.email}
-                        onChange={(e) => updateStudent(i, "email", e.target.value)}
-                        className="border rounded px-2 py-1"
-                      />
-                      <input
-                        type="url"
-                        placeholder="Attachment link"
-                        value={s.attachment}
-                        onChange={(e) => updateStudent(i, "attachment", e.target.value)}
-                        className="border rounded px-2 py-1"
-                      />
-                      <button
-                        onClick={() => removeStudent(i)}
-                        className="text-red-600 text-xs col-span-3 text-right"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                )}
+                {newGD.students.map((s, i) => (
+                  <div key={i} className="grid md:grid-cols-3 gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={s.name}
+                      onChange={(e) => updateStudent(i, "name", e.target.value)}
+                      className="border rounded px-2 py-1"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={s.email}
+                      onChange={(e) => updateStudent(i, "email", e.target.value)}
+                      className="border rounded px-2 py-1"
+                    />
+                    <input
+                      type="url"
+                      placeholder="Attachment link"
+                      value={s.attachment}
+                      onChange={(e) => updateStudent(i, "attachment", e.target.value)}
+                      className="border rounded px-2 py-1"
+                    />
+                    <button
+                      onClick={() => removeStudent(i)}
+                      className="text-red-600 text-xs col-span-3 text-right"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
 
-              {/* PANELISTS */}
+              {/* Panelists */}
               <div className="mt-4">
                 <div className="flex justify-between mb-2">
                   <label className="font-medium">Panelists</label>
                   <button onClick={addPanelist} className="text-indigo-600 text-sm">+ Add Panelist</button>
                 </div>
-                {newGD.panelists.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No panelists added yet.</p>
-                ) : (
-                  newGD.panelists.map((p, i) => (
-                    <div key={i} className="grid md:grid-cols-3 gap-2 mb-2">
-                      <input
-                        type="text"
-                        placeholder="Name"
-                        value={p.name}
-                        onChange={(e) => updatePanelist(i, "name", e.target.value)}
-                        className="border rounded px-2 py-1"
-                      />
-                      <input
-                        type="email"
-                        placeholder="Email"
-                        value={p.email}
-                        onChange={(e) => updatePanelist(i, "email", e.target.value)}
-                        className="border rounded px-2 py-1"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Phone"
-                        value={p.phone}
-                        onChange={(e) => updatePanelist(i, "phone", e.target.value)}
-                        className="border rounded px-2 py-1"
-                      />
-                      <button
-                        onClick={() => removePanelist(i)}
-                        className="text-red-600 text-xs col-span-3 text-right"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                )}
+                {newGD.panelists.map((p, i) => (
+                  <div key={i} className="grid md:grid-cols-3 gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={p.name}
+                      onChange={(e) => updatePanelist(i, "name", e.target.value)}
+                      className="border rounded px-2 py-1"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={p.email}
+                      onChange={(e) => updatePanelist(i, "email", e.target.value)}
+                      className="border rounded px-2 py-1"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Phone"
+                      value={p.phone}
+                      onChange={(e) => updatePanelist(i, "phone", e.target.value)}
+                      className="border rounded px-2 py-1"
+                    />
+                    <button
+                      onClick={() => removePanelist(i)}
+                      className="text-red-600 text-xs col-span-3 text-right"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
 
-              {/* SPOC */}
+              {/* SPOCs */}
               <div className="mt-3">
-                <label className="block text-sm font-medium mb-1">SPOCs</label>
                 <input
                   type="text"
+                  placeholder="SPOCs (comma separated)"
                   value={newGD.spocs}
                   onChange={(e) => setNewGD({ ...newGD, spocs: e.target.value })}
-                  placeholder="Comma separated names / contacts"
                   className="w-full border rounded px-3 py-2"
                 />
               </div>
 
-              {/* ADD BUTTON */}
               <div className="text-right mt-5">
                 <button
                   onClick={handleAddGD}
-                  className="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700"
+                  className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
                 >
                   Add GD
                 </button>
               </div>
             </div>
           )}
-
-          {/* GD LIST */}
-          {loading ? (
-            <p className="text-gray-500 text-center mt-10">Loading...</p>
-          ) : gdList.length === 0 ? (
-            <p className="text-gray-500 text-center mt-10">No GDs added yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {gdList.map((gd) => (
-                <div key={gd.id} className="bg-white p-5 rounded-lg shadow flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">{gd.groupName}</h3>
-                    <p className="text-sm text-gray-600">🕒 {gd.timeSlot}</p>
-                    <p className="text-sm mt-1">Panelists: {gd.panelists.length}</p>
-                    <p className="text-sm">Students: {gd.students.length}</p>
-                    {gd.meetLink && (
-                      <a
-                        href={gd.meetLink}
-                        target="_blank"
-                        className="text-indigo-600 text-sm underline mt-2 block"
-                      >
-                        Join Meet
-                      </a>
-                    )}
-                  </div>
-                  <span
-                    className={`text-xs px-3 py-1 rounded-full ${
-                      gd.status === "Completed"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
-                  >
-                    {gd.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       );
     };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<GDTracker />);
+    ReactDOM.createRoot(document.getElementById("root")).render(<GDTracker />);
   </script>
 </body>
 </html>
