@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IIFT Mentorship Dashboard - Real-time</title>
+    <title>IIFT GD Tracker - Real-time</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -19,13 +19,12 @@
     <script type="text/babel">
         // ==================== PASTE YOUR FIREBASE CONFIG HERE ====================
         const firebaseConfig = {
-          apiKey: "AIzaSyA0WITtGofY4WvQb08sZ96RNLE1rM5_Udw",
-          authDomain: "iift-mentorship-project.firebaseapp.com",
-          projectId: "iift-mentorship-project",
-          storageBucket: "iift-mentorship-project.firebasestorage.app",
-          messagingSenderId: "185893652365",
-          appId: "1:185893652365:web:2e45a3833c1088a39d1fc4",
-          measurementId: "G-QQKZG0YEDY"
+          apiKey: "YOUR_API_KEY_HERE",
+          authDomain: "YOUR_AUTH_DOMAIN_HERE",
+          projectId: "YOUR_PROJECT_ID_HERE",
+          storageBucket: "YOUR_STORAGE_BUCKET_HERE",
+          messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
+          appId: "YOUR_APP_ID_HERE"
         };
         // =========================================================================
 
@@ -36,89 +35,169 @@
         const db = firebase.firestore();
 
         const { useState, useEffect } = React;
-        const { Upload, Users, Calendar, Download, RefreshCw, AlertCircle, Save } = {
-          Upload: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>,
+        
+        const Icons = {
+          Plus: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
           Users: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>,
           Calendar: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>,
+          Edit: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>,
+          Trash: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
           Download: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>,
-          RefreshCw: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>,
-          AlertCircle: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>,
+          Upload: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>,
           Save: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
         };
 
-        const MentorshipDashboard = () => {
-          const [students, setStudents] = useState([]);
-          const [mentors, setMentors] = useState([]);
-          const [assignments, setAssignments] = useState([]);
+        const GDTracker = () => {
           const [gdGroups, setGdGroups] = useState([]);
-          const [selectedView, setSelectedView] = useState('upload');
-          const [selectedSpoc, setSelectedSpoc] = useState('all');
-          const [showInstructions, setShowInstructions] = useState(true);
+          const [stats, setStats] = useState({ totalStudents: 0, totalMentors: 0, totalGDs: 0 });
+          const [selectedView, setSelectedView] = useState('tracker');
+          const [showAddForm, setShowAddForm] = useState(false);
+          const [editingStats, setEditingStats] = useState(false);
           const [loading, setLoading] = useState(false);
+          
+          const [newGD, setNewGD] = useState({
+            timing: '',
+            groupName: '',
+            studentName: '',
+            studentEmail: '',
+            meetLink: '',
+            panel1Name: '',
+            panel1Email: '',
+            panel1Phone: '',
+            panel2Name: '',
+            panel2Email: '',
+            panel2Phone: '',
+            spocs: '',
+            status: 'pending'
+          });
 
-          const DATES = ['2025-10-16', '2025-10-17', '2025-10-18', '2025-10-19'];
-          const SLOTS = {
-            afternoon: ['12:00-12:30', '12:30-13:00', '13:00-13:30', '13:30-14:00', '14:00-14:30', '14:30-15:00', '15:00-15:30', '15:30-16:00'],
-            evening: ['17:00-17:30', '17:30-18:00', '18:00-18:30', '18:30-19:00', '19:00-19:30', '19:30-20:00', '20:00-20:30', '20:30-21:00']
-          };
+          const [tempStats, setTempStats] = useState({ totalStudents: 0, totalMentors: 0, totalGDs: 0 });
 
-          const SPOCS = [
-            'ADITYA SINGH', 'ARNAV JOSHI', 'BASIL RATHI', 'DEV PAHARIA', 'DIVYAANSH MEHTA',
-            'JATIN', 'JAY PRATAP SINGH', 'KHUSHI SHARDA', 'LAKSHYA CHAUBEY', 'MOHAMED AMEEN',
-            'RAHUL MALIK', 'RANISHKA', 'SHIBANEE RP', 'SIDHANT DADWAL', 'VAIBHAV VERMA'
-          ];
+          // Load data from Firebase
+          useEffect(() => {
+            loadFromFirebase();
+          }, []);
 
-          const GD_TOPICS = [
-            'AI and Job Displacement', 'Remote Work Culture', 'Sustainable Business Practices',
-            'Startup vs Corporate Career', 'Digital Privacy Rights', 'Global Trade Policies',
-            'Climate Change Business Impact', 'Future of Education', 'Healthcare Innovation',
-            'Financial Technology Revolution', 'Gig Economy Future', 'ESG Investing',
-            'Blockchain in Business', 'Mental Health at Work', 'Indian Manufacturing Growth'
-          ];
-
-          // Load data from Firebase on mount
-         useEffect(() => {
-  // Students real-time listener
-  const unsubscribeStudents = db.collection('students').onSnapshot(snapshot => {
-    const updatedStudents = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    setStudents(updatedStudents);
-  });
-
-  // Mentors real-time listener
-  const unsubscribeMentors = db.collection('mentors').onSnapshot(snapshot => {
-    const updatedMentors = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    setMentors(updatedMentors);
-  });
-
-  // Assignments real-time listener
-  const unsubscribeAssignments = db.collection('assignments').onSnapshot(snapshot => {
-    const updatedAssignments = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    setAssignments(updatedAssignments);
-  });
-
-  // GD Groups real-time listener
-  const unsubscribeGdGroups = db.collection('gdGroups').onSnapshot(snapshot => {
-    const updatedGdGroups = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    setGdGroups(updatedGdGroups);
-  });
-
-  // Cleanup listeners on unmount
-  return () => {
-    unsubscribeStudents();
-    unsubscribeMentors();
-    unsubscribeAssignments();
-    unsubscribeGdGroups();
-  };
-}, []);
-
-          // Real-time listener for GD status updates
+          // Real-time listener for GD groups
           useEffect(() => {
             const unsubscribe = db.collection('gdGroups').onSnapshot((snapshot) => {
-              const updatedGdGroups = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-              setGdGroups(updatedGdGroups);
+              const groups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              setGdGroups(groups);
             });
             return () => unsubscribe();
           }, []);
+
+          // Real-time listener for stats
+          useEffect(() => {
+            const unsubscribe = db.collection('stats').doc('dashboard').onSnapshot((doc) => {
+              if (doc.exists) {
+                setStats(doc.data());
+                setTempStats(doc.data());
+              }
+            });
+            return () => unsubscribe();
+          }, []);
+
+          const loadFromFirebase = async () => {
+            setLoading(true);
+            try {
+              const gdSnap = await db.collection('gdGroups').get();
+              const statsSnap = await db.collection('stats').doc('dashboard').get();
+              
+              if (!gdSnap.empty) {
+                setGdGroups(gdSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+              }
+              
+              if (statsSnap.exists) {
+                setStats(statsSnap.data());
+                setTempStats(statsSnap.data());
+              }
+            } catch (error) {
+              console.error('Error loading:', error);
+            }
+            setLoading(false);
+          };
+
+          const handleAddGD = async () => {
+            try {
+              const docRef = await db.collection('gdGroups').add({
+                ...newGD,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              
+              // Reset form
+              setNewGD({
+                timing: '',
+                groupName: '',
+                studentName: '',
+                studentEmail: '',
+                meetLink: '',
+                panel1Name: '',
+                panel1Email: '',
+                panel1Phone: '',
+                panel2Name: '',
+                panel2Email: '',
+                panel2Phone: '',
+                spocs: '',
+                status: 'pending'
+              });
+              
+              setShowAddForm(false);
+              alert('GD added successfully!');
+            } catch (error) {
+              console.error('Error adding GD:', error);
+              alert('Error adding GD: ' + error.message);
+            }
+          };
+
+          const handleUpdateGD = async (id, field, value) => {
+            try {
+              await db.collection('gdGroups').doc(id).update({ [field]: value });
+            } catch (error) {
+              console.error('Error updating:', error);
+            }
+          };
+
+          const handleDeleteGD = async (id) => {
+            if (window.confirm('Are you sure you want to delete this GD?')) {
+              try {
+                await db.collection('gdGroups').doc(id).delete();
+                alert('GD deleted successfully!');
+              } catch (error) {
+                console.error('Error deleting:', error);
+              }
+            }
+          };
+
+          const handleSaveStats = async () => {
+            try {
+              await db.collection('stats').doc('dashboard').set(tempStats);
+              setEditingStats(false);
+              alert('Stats updated successfully!');
+            } catch (error) {
+              console.error('Error updating stats:', error);
+            }
+          };
+
+          const exportToCSV = () => {
+            const headers = ['Timing', 'Group', 'Student Name', 'Student Email', 'Meet Link', 
+                            'Panel 1', 'Panel 1 Email', 'Panel 1 Phone', 
+                            'Panel 2', 'Panel 2 Email', 'Panel 2 Phone', 'SPOCs', 'Status'];
+            const rows = gdGroups.map(gd => [
+              gd.timing, gd.groupName, gd.studentName, gd.studentEmail, gd.meetLink,
+              gd.panel1Name, gd.panel1Email, gd.panel1Phone,
+              gd.panel2Name, gd.panel2Email, gd.panel2Phone,
+              gd.spocs, gd.status
+            ]);
+            
+            const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'gd_tracker.csv';
+            link.click();
+          };
 
           const parseCSV = (text) => {
             const lines = text.trim().split('\n');
@@ -134,307 +213,45 @@
             });
           };
 
-          const handleStudentUpload = (e) => {
+          const handleCSVUpload = (e) => {
             const file = e.target.files[0];
             if (file) {
               const reader = new FileReader();
               reader.onload = async (event) => {
                 const data = parseCSV(event.target.result);
-                const formattedStudents = data.map((row, idx) => ({
-                  id: row.id || row['student id'] || `STU${String(idx + 1).padStart(3, '0')}`,
-                  name: row.name || row['student name'] || `Student ${idx + 1}`,
-                  email: row.email || '',
-                  phone: row.phone || row.contact || '',
-                  spoc: row.spoc || SPOCS[Math.floor(idx / 12)]
-                }));
                 
-                // Save to Firebase
                 const batch = db.batch();
-                await db.collection('students').get().then((snapshot) => {
-                  snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+                data.forEach((row) => {
+                  const docRef = db.collection('gdGroups').doc();
+                  batch.set(docRef, {
+                    timing: row.timing || row['timing'] || '',
+                    groupName: row.group || row['group name/number'] || '',
+                    studentName: row.name || row['student name'] || '',
+                    studentEmail: row.email || row['student email'] || '',
+                    meetLink: row.link || row['meet link'] || '',
+                    panel1Name: row['panel 1'] || row['panel1'] || '',
+                    panel1Email: row['panel 1 email'] || row['panel1email'] || '',
+                    panel1Phone: row['panel 1 phone'] || row['panel1phone'] || '',
+                    panel2Name: row['panel 2'] || row['panel2'] || '',
+                    panel2Email: row['panel 2 email'] || row['panel2email'] || '',
+                    panel2Phone: row['panel 2 phone'] || row['panel2phone'] || '',
+                    spocs: row.spocs || row['spoc'] || '',
+                    status: 'pending',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                  });
                 });
-                formattedStudents.forEach((student) => {
-                  const docRef = db.collection('students').doc(student.id);
-                  batch.set(docRef, student);
-                });
-                await batch.commit();
                 
-                setStudents(formattedStudents);
-                alert(`Loaded ${formattedStudents.length} students to Firebase!`);
+                await batch.commit();
+                alert(`Imported ${data.length} GD entries!`);
               };
               reader.readAsText(file);
             }
           };
-
-          const handleMentorUpload = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = async (event) => {
-                const data = parseCSV(event.target.result);
-                const formattedMentors = data.map((row, idx) => ({
-                  id: row.id || row['mentor id'] || `MEN${String(idx + 1).padStart(3, '0')}`,
-                  name: row.name || row['mentor name'] || `Mentor ${idx + 1}`,
-                  email: row.email || '',
-                  phone: row.phone || row.contact || '',
-                  availability: row.availability ? row.availability.split(';') : DATES.slice(0, 2),
-                  availableSlots: row.slots ? row.slots.split(';') : ['afternoon', 'evening']
-                }));
-                
-                // Save to Firebase
-                const batch = db.batch();
-                await db.collection('mentors').get().then((snapshot) => {
-                  snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-                });
-                formattedMentors.forEach((mentor) => {
-                  const docRef = db.collection('mentors').doc(mentor.id);
-                  batch.set(docRef, mentor);
-                });
-                await batch.commit();
-                
-                setMentors(formattedMentors);
-                alert(`Loaded ${formattedMentors.length} mentors to Firebase!`);
-              };
-              reader.readAsText(file);
-            }
-          };
-
-          const generateAssignments = async () => {
-            if (students.length === 0 || mentors.length === 0) {
-              alert('Please upload both student and mentor data first!');
-              return;
-            }
-
-            setLoading(true);
-            const newAssignments = [];
-            const mentorSchedule = {};
-            const studentSchedule = {};
-
-            mentors.forEach(m => {
-              mentorSchedule[m.id] = {};
-              m.availability.forEach(date => {
-                mentorSchedule[m.id][date] = {
-                  afternoon: Array(8).fill(null),
-                  evening: Array(8).fill(null)
-                };
-              });
-            });
-
-            students.forEach(student => {
-              const assignedMentors = [];
-              let piCount = 0;
-
-              for (let attempt = 0; attempt < 200 && piCount < 2; attempt++) {
-                const mentor = mentors[Math.floor(Math.random() * mentors.length)];
-                
-                if (assignedMentors.includes(mentor.id)) continue;
-                
-                const availDate = mentor.availability[Math.floor(Math.random() * mentor.availability.length)];
-                const slotType = mentor.availableSlots[Math.floor(Math.random() * mentor.availableSlots.length)];
-                const slotIndex = Math.floor(Math.random() * 8);
-                
-                if (mentorSchedule[mentor.id][availDate] && mentorSchedule[mentor.id][availDate][slotType][slotIndex] === null) {
-                  const slot = SLOTS[slotType][slotIndex];
-                  
-                  if (!studentSchedule[student.id]) {
-                    studentSchedule[student.id] = {};
-                  }
-                  
-                  const scheduleKey = `${availDate}-${slot}`;
-                  if (!studentSchedule[student.id][scheduleKey]) {
-                    mentorSchedule[mentor.id][availDate][slotType][slotIndex] = {
-                      studentId: student.id,
-                      type: 'PI'
-                    };
-                    
-                    newAssignments.push({
-                      id: `ASSIGN-${newAssignments.length + 1}`,
-                      studentId: student.id,
-                      studentName: student.name,
-                      mentorId: mentor.id,
-                      mentorName: mentor.name,
-                      type: 'PI',
-                      piNumber: piCount + 1,
-                      date: availDate,
-                      slot: slot,
-                      slotType: slotType,
-                      zoomLink: '',
-                      status: 'scheduled'
-                    });
-                    
-                    studentSchedule[student.id][scheduleKey] = true;
-                    assignedMentors.push(mentor.id);
-                    piCount++;
-                  }
-                }
-              }
-            });
-
-            const newGdGroups = [];
-            const studentsPerGd = 6;
-            const numGroups = Math.ceil(students.length / studentsPerGd);
-
-            for (let i = 0; i < numGroups; i++) {
-              const groupStudents = students.slice(i * studentsPerGd, (i + 1) * studentsPerGd);
-              const mentor = mentors[i % mentors.length];
-              const date = DATES[i % DATES.length];
-              const slotType = i % 2 === 0 ? 'afternoon' : 'evening';
-              const slot = SLOTS[slotType][Math.floor(Math.random() * 8)];
-
-              newGdGroups.push({
-                id: `GD-${String(i + 1).padStart(2, '0')}`,
-                topic: GD_TOPICS[i % GD_TOPICS.length],
-                mentorId: mentor.id,
-                mentorName: mentor.name,
-                date: date,
-                slot: slot,
-                students: groupStudents.map(s => ({
-                  id: s.id,
-                  name: s.name,
-                  status: 'pending'
-                })),
-                zoomLink: ''
-              });
-
-              groupStudents.forEach(student => {
-                newAssignments.push({
-                  id: `ASSIGN-GD-${i}-${student.id}`,
-                  studentId: student.id,
-                  studentName: student.name,
-                  mentorId: mentor.id,
-                  mentorName: mentor.name,
-                  type: 'GD',
-                  gdGroupId: `GD-${String(i + 1).padStart(2, '0')}`,
-                  date: date,
-                  slot: slot,
-                  slotType: slotType,
-                  zoomLink: '',
-                  status: 'scheduled'
-                });
-              });
-            }
-
-            // Save to Firebase
-            const batch = db.batch();
-            
-            // Clear existing
-            await db.collection('assignments').get().then((snapshot) => {
-              snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-            });
-            await db.collection('gdGroups').get().then((snapshot) => {
-              snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-            });
-            
-            // Add new
-            newAssignments.forEach((assignment) => {
-              const docRef = db.collection('assignments').doc(assignment.id);
-              batch.set(docRef, assignment);
-            });
-            newGdGroups.forEach((gd) => {
-              const docRef = db.collection('gdGroups').doc(gd.id);
-              batch.set(docRef, gd);
-            });
-            
-            await batch.commit();
-
-            setAssignments(newAssignments);
-            setGdGroups(newGdGroups);
-            setSelectedView('dashboard');
-            setLoading(false);
-            alert('Schedule generated and saved to Firebase!');
-          };
-
-          const getMentorStats = () => {
-            const stats = {};
-            mentors.forEach(m => {
-              stats[m.id] = {
-                name: m.name,
-                piCount: 0,
-                totalMinutes: 0
-              };
-            });
-
-            assignments.forEach(a => {
-              if (stats[a.mentorId]) {
-                if (a.type === 'PI') {
-                  stats[a.mentorId].piCount++;
-                  stats[a.mentorId].totalMinutes += 30;
-                } else if (a.type === 'GD') {
-                  stats[a.mentorId].totalMinutes += 5;
-                }
-              }
-            });
-
-            return Object.values(stats).sort((a, b) => b.totalMinutes - a.totalMinutes);
-          };
-
-          const exportToCSV = () => {
-            const headers = ['Student ID', 'Student Name', 'Mentor ID', 'Mentor Name', 'Type', 'Date', 'Slot', 'Zoom Link', 'Status'];
-            const rows = assignments.map(a => [
-              a.studentId, a.studentName, a.mentorId, a.mentorName, 
-              a.type, a.date, a.slot, a.zoomLink, a.status
-            ]);
-            
-            const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'mentorship_schedule.csv';
-            link.click();
-          };
-
-          const downloadSampleCSV = (type) => {
-            let content = '';
-            if (type === 'students') {
-              content = `id,name,email,phone,spoc\nSTU001,John Doe,john@iift.edu,+91-9876543210,ADITYA SINGH\nSTU002,Jane Smith,jane@iift.edu,+91-9876543211,ADITYA SINGH`;
-            } else {
-              content = `id,name,email,phone,availability,slots\nMEN001,Dr. Kumar,kumar@company.com,+91-9876543210,2025-10-16;2025-10-17,afternoon;evening\nMEN002,Ms. Sharma,sharma@company.com,+91-9876543211,2025-10-16;2025-10-18,afternoon`;
-            }
-            
-            const blob = new Blob([content], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `sample_${type}.csv`;
-            link.click();
-          };
-
-          const updateGdStatus = async (gdId, studentId, newStatus) => {
-            const gdRef = db.collection('gdGroups').doc(gdId);
-            const gd = gdGroups.find(g => g.id === gdId);
-            
-            if (gd) {
-              const updatedStudents = gd.students.map(s => 
-                s.id === studentId ? { ...s, status: newStatus } : s
-              );
-              await gdRef.update({ students: updatedStudents });
-            }
-          };
-
-          const updateZoomLink = async (assignmentId, newLink) => {
-            await db.collection('assignments').doc(assignmentId).update({ zoomLink: newLink });
-            setAssignments(prev => prev.map(a => 
-              a.id === assignmentId ? { ...a, zoomLink: newLink } : a
-            ));
-          };
-
-          const filteredStudents = selectedSpoc === 'all' 
-            ? students 
-            : students.filter(s => s.spoc === selectedSpoc);
-
-          const filteredAssignments = selectedSpoc === 'all'
-            ? assignments
-            : assignments.filter(a => {
-                const student = students.find(s => s.id === a.studentId);
-                return student && student.spoc === selectedSpoc;
-              });
 
           if (loading) {
             return (
               <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
                 <div className="text-center">
-                  <RefreshCw className="animate-spin mx-auto mb-4" size={48} />
                   <p className="text-xl font-semibold">Loading...</p>
                 </div>
               </div>
@@ -447,314 +264,422 @@
                 <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h1 className="text-3xl font-bold text-indigo-900">IIFT Career Mentorship Dashboard</h1>
-                      <p className="text-gray-600">October 16-19, 2025 • Real-time Sync Enabled 🔄</p>
+                      <h1 className="text-3xl font-bold text-indigo-900">IIFT GD Tracker</h1>
+                      <p className="text-gray-600">October 16-19, 2025 • Real-time Sync 🔄</p>
                     </div>
-                    {assignments.length > 0 && (
+                    <div className="flex gap-2">
                       <button
                         onClick={exportToCSV}
                         className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
                       >
-                        <Download size={20} />
-                        Export Schedule
+                        <Icons.Download size={20} />
+                        Export CSV
                       </button>
-                    )}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-3 gap-4 mb-6">
                     <div className="bg-blue-100 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Users size={24} className="text-blue-600" />
-                        <span className="font-semibold">Students</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Icons.Users size={24} className="text-blue-600" />
+                          <span className="font-semibold">Total Students</span>
+                        </div>
+                        {!editingStats && (
+                          <button onClick={() => setEditingStats(true)} className="text-blue-600">
+                            <Icons.Edit size={16} />
+                          </button>
+                        )}
                       </div>
-                      <p className="text-3xl font-bold text-blue-700">{students.length}</p>
+                      {editingStats ? (
+                        <input
+                          type="number"
+                          value={tempStats.totalStudents}
+                          onChange={(e) => setTempStats({...tempStats, totalStudents: parseInt(e.target.value) || 0})}
+                          className="text-2xl font-bold text-blue-700 border rounded px-2 py-1 w-full"
+                        />
+                      ) : (
+                        <p className="text-3xl font-bold text-blue-700">{stats.totalStudents}</p>
+                      )}
                     </div>
+                    
                     <div className="bg-green-100 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Users size={24} className="text-green-600" />
-                        <span className="font-semibold">Mentors</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Icons.Users size={24} className="text-green-600" />
+                          <span className="font-semibold">Total Mentors</span>
+                        </div>
                       </div>
-                      <p className="text-3xl font-bold text-green-700">{mentors.length}</p>
+                      {editingStats ? (
+                        <input
+                          type="number"
+                          value={tempStats.totalMentors}
+                          onChange={(e) => setTempStats({...tempStats, totalMentors: parseInt(e.target.value) || 0})}
+                          className="text-2xl font-bold text-green-700 border rounded px-2 py-1 w-full"
+                        />
+                      ) : (
+                        <p className="text-3xl font-bold text-green-700">{stats.totalMentors}</p>
+                      )}
                     </div>
-                    <div className="bg-purple-100 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar size={24} className="text-purple-600" />
-                        <span className="font-semibold">PI Sessions</span>
-                      </div>
-                      <p className="text-3xl font-bold text-purple-700">
-                        {assignments.filter(a => a.type === 'PI').length}
-                      </p>
-                    </div>
+                    
                     <div className="bg-orange-100 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Users size={24} className="text-orange-600" />
-                        <span className="font-semibold">GD Groups</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Icons.Calendar size={24} className="text-orange-600" />
+                          <span className="font-semibold">Total GDs</span>
+                        </div>
                       </div>
-                      <p className="text-3xl font-bold text-orange-700">{gdGroups.length}</p>
+                      {editingStats ? (
+                        <input
+                          type="number"
+                          value={tempStats.totalGDs}
+                          onChange={(e) => setTempStats({...tempStats, totalGDs: parseInt(e.target.value) || 0})}
+                          className="text-2xl font-bold text-orange-700 border rounded px-2 py-1 w-full"
+                        />
+                      ) : (
+                        <p className="text-3xl font-bold text-orange-700">{stats.totalGDs}</p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex gap-2 mb-4 flex-wrap">
+                  {editingStats && (
+                    <div className="flex gap-2 justify-end mb-4">
+                      <button
+                        onClick={() => {
+                          setTempStats(stats);
+                          setEditingStats(false);
+                        }}
+                        className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveStats}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                      >
+                        <Icons.Save size={16} />
+                        Save Stats
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 mb-4">
                     <button
-                      onClick={() => setSelectedView('upload')}
-                      className={`px-4 py-2 rounded-lg ${selectedView === 'upload' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
-                    >
-                      <Upload className="inline mr-2" size={16} />
-                      Upload Data
-                    </button>
-                    <button
-                      onClick={() => setSelectedView('dashboard')}
-                      className={`px-4 py-2 rounded-lg ${selectedView === 'dashboard' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
-                      disabled={assignments.length === 0}
-                    >
-                      Dashboard
-                    </button>
-                    <button
-                      onClick={() => setSelectedView('schedule')}
-                      className={`px-4 py-2 rounded-lg ${selectedView === 'schedule' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
-                      disabled={assignments.length === 0}
-                    >
-                      Schedule
-                    </button>
-                    <button
-                      onClick={() => setSelectedView('gd')}
-                      className={`px-4 py-2 rounded-lg ${selectedView === 'gd' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
-                      disabled={gdGroups.length === 0}
+                      onClick={() => setSelectedView('tracker')}
+                      className={`px-4 py-2 rounded-lg ${selectedView === 'tracker' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
                     >
                       GD Tracker
                     </button>
                     <button
-                      onClick={() => setSelectedView('mentors')}
-                      className={`px-4 py-2 rounded-lg ${selectedView === 'mentors' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
-                      disabled={assignments.length === 0}
+                      onClick={() => setSelectedView('add')}
+                      className={`px-4 py-2 rounded-lg ${selectedView === 'add' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
                     >
-                      Mentor Utilization
+                      Add GD
+                    </button>
+                    <button
+                      onClick={() => setSelectedView('import')}
+                      className={`px-4 py-2 rounded-lg ${selectedView === 'import' ? 'bg-indigo-600 text-white' : 'bg-gray-200'}`}
+                    >
+                      Import CSV
                     </button>
                   </div>
-
-                  {assignments.length > 0 && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium mb-2">Filter by SPOC:</label>
-                      <select
-                        value={selectedSpoc}
-                        onChange={(e) => setSelectedSpoc(e.target.value)}
-                        className="border rounded px-3 py-2 w-64"
-                      >
-                        <option value="all">All SPOCs</option>
-                        {SPOCS.map(spoc => (
-                          <option key={spoc} value={spoc}>{spoc}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
                 </div>
 
-                {selectedView === 'upload' && (
+                {selectedView === 'tracker' && (
                   <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-2xl font-bold mb-4">Upload Data to Firebase</h2>
+                    <h2 className="text-2xl font-bold mb-4">GD Groups ({gdGroups.length})</h2>
                     
-                    {showInstructions && (
-                      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                        <div className="flex items-start">
-                          <AlertCircle className="text-blue-500 mr-3 flex-shrink-0 mt-1" size={24} />
-                          <div>
-                            <h3 className="font-semibold mb-2">CSV Format Instructions:</h3>
-                            <p className="text-sm mb-2"><strong>Students CSV:</strong> id, name, email, phone, spoc</p>
-                            <p className="text-sm mb-2"><strong>Mentors CSV:</strong> id, name, email, phone, availability, slots</p>
-                            <p className="text-sm mb-2"><strong>Note:</strong> Data uploaded here will be saved to Firebase and visible to all 15 SPOCs instantly!</p>
-                            <button onClick={() => setShowInstructions(false)} className="text-blue-600 text-sm underline mt-2">
-                              Hide instructions
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                        <h3 className="font-semibold text-lg mb-4">Upload Students</h3>
-                        <input
-                          type="file"
-                          accept=".csv"
-                          onChange={handleStudentUpload}
-                          className="mb-4 w-full"
-                        />
+                    {gdGroups.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500">
+                        <p className="mb-4">No GD groups yet</p>
                         <button
-                          onClick={() => downloadSampleCSV('students')}
-                          className="text-blue-600 text-sm underline"
+                          onClick={() => setSelectedView('add')}
+                          className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
                         >
-                          Download sample students CSV
-                        </button>
-                        {students.length > 0 && (
-                          <p className="text-green-600 mt-2">✓ {students.length} students in Firebase</p>
-                        )}
-                      </div>
-
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                        <h3 className="font-semibold text-lg mb-4">Upload Mentors</h3>
-                        <input
-                          type="file"
-                          accept=".csv"
-                          onChange={handleMentorUpload}
-                          className="mb-4 w-full"
-                        />
-                        <button
-                          onClick={() => downloadSampleCSV('mentors')}
-                          className="text-blue-600 text-sm underline"
-                        >
-                          Download sample mentors CSV
-                        </button>
-                        {mentors.length > 0 && (
-                          <p className="text-green-600 mt-2">✓ {mentors.length} mentors in Firebase</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {students.length > 0 && mentors.length > 0 && (
-                      <div className="mt-6 text-center">
-                        <button
-                          onClick={generateAssignments}
-                          className="bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 flex items-center gap-2 mx-auto"
-                        >
-                          <RefreshCw size={20} />
-                          Generate Schedule & Save to Firebase
+                          Add Your First GD
                         </button>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {selectedView === 'dashboard' && assignments.length > 0 && (
-                  <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-2xl font-bold mb-4">Quick Overview</h2>
-                    <div className="grid grid-cols-4 gap-4">
-                      {DATES.map(date => {
-                        const dateAssignments = filteredAssignments.filter(a => a.date === date);
-                        return (
-                          <div key={date} className="border rounded-lg p-4">
-                            <h3 className="font-semibold text-lg mb-2">
-                              {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </h3>
-                            <p className="text-sm text-gray-600">Sessions: {dateAssignments.length}</p>
-                            <p className="text-sm text-gray-600">
-                              PIs: {dateAssignments.filter(a => a.type === 'PI').length}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              GDs: {new Set(dateAssignments.filter(a => a.type === 'GD').map(a => a.gdGroupId)).size}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {selectedView === 'schedule' && assignments.length > 0 && (
-                  <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-2xl font-bold mb-4">Master Schedule</h2>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-indigo-100">
-                            <th className="p-2 text-left">Student</th>
-                            <th className="p-2 text-left">Type</th>
-                            <th className="p-2 text-left">Mentor</th>
-                            <th className="p-2 text-left">Date</th>
-                            <th className="p-2 text-left">Slot</th>
-                            <th className="p-2 text-left">Zoom Link</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredAssignments.map((a, idx) => (
-                            <tr key={a.id} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
-                              <td className="p-2">{a.studentName}</td>
-                              <td className="p-2">
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  a.type === 'PI' ? 'bg-blue-200 text-blue-800' : 'bg-orange-200 text-orange-800'
-                                }`}>
-                                  {a.type}
-                                </span>
-                              </td>
-                              <td className="p-2">{a.mentorName}</td>
-                              <td className="p-2">{new Date(a.date).toLocaleDateString()}</td>
-                              <td className="p-2">{a.slot}</td>
-                              <td className="p-2">
-                                <input
-                                  type="text"
-                                  value={a.zoomLink}
-                                  onChange={(e) => updateZoomLink(a.id, e.target.value)}
-                                  placeholder="Add Zoom link"
-                                  className="text-xs border rounded px-2 py-1 w-full"
-                                />
-                              </td>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-indigo-100">
+                              <th className="p-2 text-left">Timing</th>
+                              <th className="p-2 text-left">Group</th>
+                              <th className="p-2 text-left">Student</th>
+                              <th className="p-2 text-left">Email</th>
+                              <th className="p-2 text-left">Meet Link</th>
+                              <th className="p-2 text-left">Panel 1</th>
+                              <th className="p-2 text-left">Panel 2</th>
+                              <th className="p-2 text-left">SPOCs</th>
+                              <th className="p-2 text-left">Status</th>
+                              <th className="p-2 text-left">Actions</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {selectedView === 'gd' && gdGroups.length > 0 && (
-                  <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-2xl font-bold mb-4">GD Attendance Tracker (Real-time)</h2>
-                    <div className="space-y-4">
-                      {gdGroups.map(gd => (
-                        <div key={gd.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <h3 className="font-semibold text-lg">{gd.id}: {gd.topic}</h3>
-                              <p className="text-sm text-gray-600">
-                                {new Date(gd.date).toLocaleDateString()} | {gd.slot} | Mentor: {gd.mentorName}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {gd.students.map(student => (
-                              <div key={student.id} className="flex items-center justify-between border rounded p-2">
-                                <span className="text-sm">{student.name}</span>
-                                <select
-                                  value={student.status}
-                                  onChange={(e) => updateGdStatus(gd.id, student.id, e.target.value)}
-                                  className="text-xs border rounded px-1"
-                                >
-                                  <option value="pending">Pending</option>
-                                  <option value="in">IN</option>
-                                  <option value="out">OUT</option>
-                                </select>
-                              </div>
+                          </thead>
+                          <tbody>
+                            {gdGroups.map((gd, idx) => (
+                              <tr key={gd.id} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
+                                <td className="p-2">{gd.timing}</td>
+                                <td className="p-2 font-semibold">{gd.groupName}</td>
+                                <td className="p-2">{gd.studentName}</td>
+                                <td className="p-2 text-xs">{gd.studentEmail}</td>
+                                <td className="p-2">
+                                  {gd.meetLink && (
+                                    <a href={gd.meetLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                                      Join
+                                    </a>
+                                  )}
+                                </td>
+                                <td className="p-2 text-xs">
+                                  {gd.panel1Name && (
+                                    <div>
+                                      <div>{gd.panel1Name}</div>
+                                      <div className="text-gray-500">{gd.panel1Phone}</div>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-2 text-xs">
+                                  {gd.panel2Name && (
+                                    <div>
+                                      <div>{gd.panel2Name}</div>
+                                      <div className="text-gray-500">{gd.panel2Phone}</div>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-2 text-xs">{gd.spocs}</td>
+                                <td className="p-2">
+                                  <select
+                                    value={gd.status}
+                                    onChange={(e) => handleUpdateGD(gd.id, 'status', e.target.value)}
+                                    className="text-xs border rounded px-2 py-1"
+                                  >
+                                    <option value="pending">Pending</option>
+                                    <option value="in-progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                  </select>
+                                </td>
+                                <td className="p-2">
+                                  <button
+                                    onClick={() => handleDeleteGD(gd.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    <Icons.Trash size={18} />
+                                  </button>
+                                </td>
+                              </tr>
                             ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {selectedView === 'add' && (
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-2xl font-bold mb-4">Add New GD</h2>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Timing</label>
+                        <input
+                          type="text"
+                          value={newGD.timing}
+                          onChange={(e) => setNewGD({...newGD, timing: e.target.value})}
+                          placeholder="e.g., 18:00"
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Group Name/Number</label>
+                        <input
+                          type="text"
+                          value={newGD.groupName}
+                          onChange={(e) => setNewGD({...newGD, groupName: e.target.value})}
+                          placeholder="e.g., G1"
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Student Name</label>
+                        <input
+                          type="text"
+                          value={newGD.studentName}
+                          onChange={(e) => setNewGD({...newGD, studentName: e.target.value})}
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Student Email</label>
+                        <input
+                          type="email"
+                          value={newGD.studentEmail}
+                          onChange={(e) => setNewGD({...newGD, studentEmail: e.target.value})}
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-1">Meet Link</label>
+                        <input
+                          type="url"
+                          value={newGD.meetLink}
+                          onChange={(e) => setNewGD({...newGD, meetLink: e.target.value})}
+                          placeholder="https://meet.google.com/..."
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                      
+                      <div className="col-span-2 border-t pt-4 mt-2">
+                        <h3 className="font-semibold mb-3">Panel 1</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Name</label>
+                            <input
+                              type="text"
+                              value={newGD.panel1Name}
+                              onChange={(e) => setNewGD({...newGD, panel1Name: e.target.value})}
+                              className="w-full border rounded px-3 py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Email</label>
+                            <input
+                              type="email"
+                              value={newGD.panel1Email}
+                              onChange={(e) => setNewGD({...newGD, panel1Email: e.target.value})}
+                              className="w-full border rounded px-3 py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Phone</label>
+                            <input
+                              type="tel"
+                              value={newGD.panel1Phone}
+                              onChange={(e) => setNewGD({...newGD, panel1Phone: e.target.value})}
+                              className="w-full border rounded px-3 py-2"
+                            />
                           </div>
                         </div>
-                      ))}
+                      </div>
+                      
+                      <div className="col-span-2 border-t pt-4 mt-2">
+                        <h3 className="font-semibold mb-3">Panel 2</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Name</label>
+                            <input
+                              type="text"
+                              value={newGD.panel2Name}
+                              onChange={(e) => setNewGD({...newGD, panel2Name: e.target.value})}
+                              className="w-full border rounded px-3 py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Email</label>
+                            <input
+                              type="email"
+                              value={newGD.panel2Email}
+                              onChange={(e) => setNewGD({...newGD, panel2Email: e.target.value})}
+                              className="w-full border rounded px-3 py-2"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Phone</label>
+                            <input
+                              type="tel"
+                              value={newGD.panel2Phone}
+                              onChange={(e) => setNewGD({...newGD, panel2Phone: e.target.value})}
+                              className="w-full border rounded px-3 py-2"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-1">SPOCs</label>
+                        <input
+                          type="text"
+                          value={newGD.spocs}
+                          onChange={(e) => setNewGD({...newGD, spocs: e.target.value})}
+                          placeholder="e.g., JAY, ADITYA SINGH"
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setSelectedView('tracker')}
+                        className="px-6 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAddGD}
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                      >
+                        <Icons.Save size={20} />
+                        Save GD
+                      </button>
                     </div>
                   </div>
                 )}
 
-                {selectedView === 'mentors' && assignments.length > 0 && (
+                {selectedView === 'import' && (
                   <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-2xl font-bold mb-4">Mentor Time Commitment</h2>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-indigo-100">
-                            <th className="p-2 text-left">Mentor Name</th>
-                            <th className="p-2 text-left">PI Sessions</th>
-                            <th className="p-2 text-left">Total Minutes</th>
-                            <th className="p-2 text-left">Total Hours</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getMentorStats().map((stat, idx) => (
-                            <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
-                              <td className="p-2">{stat.name}</td>
-                              <td className="p-2">{stat.piCount}</td>
-                              <td className="p-2">{stat.totalMinutes}</td>
-                              <td className="p-2 font-semibold">{(stat.totalMinutes / 60).toFixed(1)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <h2 className="text-2xl font-bold mb-4">Import GDs from CSV</h2>
+                    
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                      <h3 className="font-semibold mb-2">CSV Format:</h3>
+                      <p className="text-sm mb-2">Your CSV should have these columns (in any order):</p>
+                      <p className="text-sm font-mono">
+                        Timing, Group Name/Number, Name, Student Email, Link, 
+                        Panel 1, Panel 1 Email, Panel 1 Phone, 
+                        Panel 2, Panel 2 Email, Panel 2 Phone, SPOCs
+                      </p>
+                      <p className="text-sm mt-2 text-gray-600">
+                        <strong>Note:</strong> All fields are optional. Leave blank if not available.
+                      </p>
+                    </div>
+
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <Icons.Upload className="mx-auto mb-4 text-gray-400" size={48} />
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCSVUpload}
+                        className="mb-4"
+                        id="csvUpload"
+                      />
+                      <label htmlFor="csvUpload" className="cursor-pointer">
+                        <div className="text-lg font-semibold text-indigo-600 hover:text-indigo-800">
+                          Click to upload CSV file
+                        </div>
+                      </label>
+                    </div>
+
+                    <div className="mt-6">
+                      <button
+                        onClick={() => {
+                          const sampleCSV = `Timing,Group Name/Number,Name,Student Email,Link,Panel 1,Panel 1 Email,Panel 1 Phone,Panel 2,Panel 2 Email,Panel 2 Phone,SPOCs
+18:00,G1,Akansha Marwah,akansha_ba26@iift.edu,https://meet.google.com/qwp-zdky-qsx,Manikanta Bhavirisetti,manikanta.bhavirisetti@ofi.com,7994978649,Ankur Gupta,ankurgupta.iift@gmail.com,9818009068,JAY
+18:30,G2,Ayush R Patel,ayush_ba26@iift.edu,https://meet.google.com/abc-defg-hij,Dr. Kumar,kumar@company.com,9876543210,Ms. Sharma,sharma@company.com,9876543211,ADITYA SINGH`;
+                          
+                          const blob = new Blob([sampleCSV], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = 'sample_gd_import.csv';
+                          link.click();
+                        }}
+                        className="text-blue-600 text-sm underline"
+                      >
+                        Download Sample CSV Template
+                      </button>
                     </div>
                   </div>
                 )}
@@ -764,7 +689,7 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<MentorshipDashboard />);
+        root.render(<GDTracker />);
     </script>
 </body>
 </html>
