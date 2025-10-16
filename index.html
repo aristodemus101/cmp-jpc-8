@@ -108,7 +108,8 @@
         status: 'pending'
       });
 
-      // keep a ref to know if user is actively editing stats (so we don't overwrite)
+      const [editingGD, setEditingGD] = useState(null);
+
       const editingStatsRef = useRef(false);
 
       // Real-time listener for gdGroups
@@ -117,21 +118,14 @@
           const groups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setGdGroups(groups);
 
-          // calculate derived stats
           const derived = calculateStatsFromGroups(groups);
 
-          // Auto-update stats doc only if user is not editing stats
           if (!editingStatsRef.current) {
-            // Fetch current stats doc and update only if there's a meaningful difference
             db.collection('stats').doc('dashboard').get().then(docSnap => {
               const current = docSnap.exists ? docSnap.data() : {};
               const toUpdate = {};
-              // update fields that should be derived
               if (current.totalGDs !== derived.totalGDs) toUpdate.totalGDs = derived.totalGDs;
-              // Only set totalStudents if stats doc doesn't exist or if it's zero (don't overwrite admin manual edits)
-              // We'll update a 'derivedTotalStudents' field for visibility as well.
               if (current.derivedTotalStudents !== derived.totalStudentsDerived) toUpdate.derivedTotalStudents = derived.totalStudentsDerived;
-              // If stats doc has totalStudents === undefined/null, we can set it to derived as a starting value
               if ((current.totalStudents === undefined || current.totalStudents === null) && derived.totalStudentsDerived !== undefined) {
                 toUpdate.totalStudents = derived.totalStudentsDerived;
               }
@@ -152,7 +146,6 @@
         const unsubscribe = db.collection('stats').doc('dashboard').onSnapshot(doc => {
           if (doc.exists) {
             const d = doc.data();
-            // merge defaults
             setStats({
               totalStudents: d.totalStudents ?? 0,
               studentsInPI: d.studentsInPI ?? 0,
@@ -169,7 +162,6 @@
               totalGDs: d.totalGDs ?? 0
             });
           } else {
-            // initialize doc
             db.collection('stats').doc('dashboard').set({
               totalStudents: 0,
               studentsInPI: 0,
@@ -184,7 +176,6 @@
         return () => unsubscribe();
       }, []);
 
-      // ========== CRUD helpers (preserve original behaviour but avoid increments) ==========
       const addStudent = () => {
         setNewGD({
           ...newGD,
@@ -225,7 +216,6 @@
             ...newGD,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
-          // do not increment stats here; derived counts will update from the snapshot
           setNewGD({
             timing: '',
             groupName: '',
@@ -255,7 +245,6 @@
         if (!window.confirm('Are you sure you want to delete this GD?')) return;
         try {
           await db.collection('gdGroups').doc(id).delete();
-          // do NOT decrement stats manually; derived snapshot will update stats doc if appropriate
           alert('GD deleted successfully!');
         } catch (error) {
           console.error('Error deleting GD:', error);
@@ -263,7 +252,65 @@
         }
       };
 
-      // ========== Stats editing ==========
+      // Edit GD functions
+      const startEditingGD = (gd) => {
+        setEditingGD({
+          id: gd.id,
+          timing: gd.timing || '',
+          groupName: gd.groupName || '',
+          students: gd.students ? [...gd.students] : [],
+          meetLink: gd.meetLink || '',
+          panelists: gd.panelists ? [...gd.panelists] : [],
+          spocs: gd.spocs || '',
+          status: gd.status || 'pending'
+        });
+      };
+
+      const cancelEditingGD = () => {
+        setEditingGD(null);
+      };
+
+      const saveEditingGD = async () => {
+        if (!editingGD) return;
+        try {
+          const { id, ...data } = editingGD;
+          await db.collection('gdGroups').doc(id).update(data);
+          setEditingGD(null);
+          alert('GD updated successfully!');
+        } catch (error) {
+          console.error('Error updating GD:', error);
+          alert('Error updating GD: ' + error.message);
+        }
+      };
+
+      const updateEditingGDStudent = (index, field, value) => {
+        const arr = [...editingGD.students];
+        arr[index][field] = value;
+        setEditingGD({ ...editingGD, students: arr });
+      };
+
+      const removeEditingGDStudent = (index) => {
+        setEditingGD({ ...editingGD, students: editingGD.students.filter((_, i) => i !== index) });
+      };
+
+      const addEditingGDStudent = () => {
+        setEditingGD({ ...editingGD, students: [...editingGD.students, { name: '', email: '', attachment: '' }] });
+      };
+
+      const updateEditingGDPanelist = (index, field, value) => {
+        const arr = [...editingGD.panelists];
+        arr[index][field] = value;
+        setEditingGD({ ...editingGD, panelists: arr });
+      };
+
+      const removeEditingGDPanelist = (index) => {
+        setEditingGD({ ...editingGD, panelists: editingGD.panelists.filter((_, i) => i !== index) });
+      };
+
+      const addEditingGDPanelist = () => {
+        setEditingGD({ ...editingGD, panelists: [...editingGD.panelists, { name: '', email: '', phone: '' }] });
+      };
+
       const handleStatsChange = (field, value) => {
         const numValue = value === '' ? 0 : parseInt(value) || 0;
         setTempStats({ ...tempStats, [field]: numValue });
@@ -271,7 +318,6 @@
 
       const handleSaveStats = async () => {
         try {
-          // mark editing false to allow snapshot-driven updates to continue
           editingStatsRef.current = false;
           await db.collection('stats').doc('dashboard').set({
             totalStudents: tempStats.totalStudents,
@@ -314,7 +360,6 @@
         setEditingStats(false);
       };
 
-      // ========== CSV export ==========
       const exportToCSV = () => {
         const headers = ['Timing', 'Group', 'Students', 'Meet Link', 'Panelists', 'SPOCs', 'Status'];
         const rows = gdGroups.map(gd => [
@@ -335,7 +380,6 @@
         link.click();
       };
 
-      // Derived stats for UI display (always computed from gdGroups, not from editable stats)
       const derived = calculateStatsFromGroups(gdGroups);
 
       return (
@@ -391,11 +435,29 @@
                   <div className="text-sm text-slate-600 mt-2">
                     <div className="flex justify-between items-center">
                       <div>In PI</div>
-                      <div className="font-semibold">{stats.studentsInPI ?? 0}</div>
+                      {!editingStats ? (
+                        <div className="font-semibold">{stats.studentsInPI ?? 0}</div>
+                      ) : (
+                        <input
+                          type="number"
+                          value={tempStats.studentsInPI ?? ''}
+                          onChange={(e) => handleStatsChange('studentsInPI', e.target.value)}
+                          className="border rounded px-1 py-0.5 w-16 text-sm"
+                        />
+                      )}
                     </div>
                     <div className="flex justify-between items-center">
                       <div>In GD</div>
-                      <div className="font-semibold">{stats.studentsInGD ?? 0}</div>
+                      {!editingStats ? (
+                        <div className="font-semibold">{stats.studentsInGD ?? 0}</div>
+                      ) : (
+                        <input
+                          type="number"
+                          value={tempStats.studentsInGD ?? ''}
+                          onChange={(e) => handleStatsChange('studentsInGD', e.target.value)}
+                          className="border rounded px-1 py-0.5 w-16 text-sm"
+                        />
+                      )}
                     </div>
                     <div className="mt-2 text-xs text-slate-500">
                       Derived total (auto): <span className="font-medium">{derived.totalStudentsDerived}</span>
@@ -439,7 +501,6 @@
                         <div className="text-3xl font-bold text-amber-700">{derived.totalGDs}</div>
                       </div>
                     </div>
-                    {/* no edit on totalGDs here - it's derived */}
                   </div>
 
                   <div className="text-sm text-slate-600 mt-2">
@@ -499,16 +560,46 @@
                   <div className="space-y-4">
                     {gdGroups.map(gd => (
                       <div key={gd.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4 mb-2">
-                              <span className="text-lg font-bold text-indigo-600">{gd.groupName}</span>
-                              <span className="text-sm text-slate-500">{gd.timing}</span>
+                        {editingGD && editingGD.id === gd.id ? (
+                          // Edit mode
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Timing</label>
+                                <input
+                                  type="text"
+                                  value={editingGD.timing}
+                                  onChange={(e) => setEditingGD({...editingGD, timing: e.target.value})}
+                                  className="w-full border rounded px-3 py-2"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Group Name</label>
+                                <input
+                                  type="text"
+                                  value={editingGD.groupName}
+                                  onChange={(e) => setEditingGD({...editingGD, groupName: e.target.value})}
+                                  className="w-full border rounded px-3 py-2"
+                                />
+                              </div>
+                            </div>
 
+                            <div>
+                              <label className="block text-sm font-medium mb-1">Meet Link</label>
+                              <input
+                                type="url"
+                                value={editingGD.meetLink}
+                                onChange={(e) => setEditingGD({...editingGD, meetLink: e.target.value})}
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium mb-1">Status</label>
                               <select
-                                value={gd.status}
-                                onChange={(e) => handleUpdateGD(gd.id, 'status', e.target.value)}
-                                className="text-xs border rounded px-2 py-1"
+                                value={editingGD.status}
+                                onChange={(e) => setEditingGD({...editingGD, status: e.target.value})}
+                                className="border rounded px-3 py-2"
                               >
                                 <option value="pending">Pending</option>
                                 <option value="in-progress">In Progress</option>
@@ -516,57 +607,189 @@
                               </select>
                             </div>
 
-                            {gd.meetLink && (
-                              <a href={gd.meetLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-sm">🔗 Join Meeting with this link</a>
+                            <div className="border-t pt-4">
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-semibold text-sm">Students</h4>
+                                <button onClick={addEditingGDStudent} className="flex items-center gap-1 bg-indigo-600 text-white px-2 py-1 rounded text-xs">
+                                  <Icons.Plus /> Add
+                                </button>
+                              </div>
+                              {editingGD.students.map((student, idx) => (
+                                <div key={idx} className="grid grid-cols-12 gap-2 mb-2 items-end">
+                                  <div className="col-span-4">
+                                    <input
+                                      type="text"
+                                      value={student.name}
+                                      onChange={(e) => updateEditingGDStudent(idx, 'name', e.target.value)}
+                                      placeholder="Name"
+                                      className="w-full border rounded px-2 py-1 text-sm"
+                                    />
+                                  </div>
+                                  <div className="col-span-4">
+                                    <input
+                                      type="email"
+                                      value={student.email}
+                                      onChange={(e) => updateEditingGDStudent(idx, 'email', e.target.value)}
+                                      placeholder="Email"
+                                      className="w-full border rounded px-2 py-1 text-sm"
+                                    />
+                                  </div>
+                                  <div className="col-span-3">
+                                    <input
+                                      type="url"
+                                      value={student.attachment}
+                                      onChange={(e) => updateEditingGDStudent(idx, 'attachment', e.target.value)}
+                                      placeholder="Attachment"
+                                      className="w-full border rounded px-2 py-1 text-sm"
+                                    />
+                                  </div>
+                                  <div className="col-span-1">
+                                    <button onClick={() => removeEditingGDStudent(idx)} className="w-full bg-red-100 text-red-600 p-1 rounded">
+                                      <Icons.X />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="border-t pt-4">
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-semibold text-sm">Panelists</h4>
+                                <button onClick={addEditingGDPanelist} className="flex items-center gap-1 bg-green-600 text-white px-2 py-1 rounded text-xs">
+                                  <Icons.Plus /> Add
+                                </button>
+                              </div>
+                              {editingGD.panelists.map((panelist, idx) => (
+                                <div key={idx} className="grid grid-cols-12 gap-2 mb-2 items-end">
+                                  <div className="col-span-4">
+                                    <input
+                                      type="text"
+                                      value={panelist.name}
+                                      onChange={(e) => updateEditingGDPanelist(idx, 'name', e.target.value)}
+                                      placeholder="Name"
+                                      className="w-full border rounded px-2 py-1 text-sm"
+                                    />
+                                  </div>
+                                  <div className="col-span-4">
+                                    <input
+                                      type="email"
+                                      value={panelist.email}
+                                      onChange={(e) => updateEditingGDPanelist(idx, 'email', e.target.value)}
+                                      placeholder="Email"
+                                      className="w-full border rounded px-2 py-1 text-sm"
+                                    />
+                                  </div>
+                                  <div className="col-span-3">
+                                    <input
+                                      type="tel"
+                                      value={panelist.phone}
+                                      onChange={(e) => updateEditingGDPanelist(idx, 'phone', e.target.value)}
+                                      placeholder="Phone"
+                                      className="w-full border rounded px-2 py-1 text-sm"
+                                    />
+                                  </div>
+                                  <div className="col-span-1">
+                                    <button onClick={() => removeEditingGDPanelist(idx)} className="w-full bg-red-100 text-red-600 p-1 rounded">
+                                      <Icons.X />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium mb-1">SPOCs</label>
+                              <input
+                                type="text"
+                                value={editingGD.spocs}
+                                onChange={(e) => setEditingGD({...editingGD, spocs: e.target.value})}
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+
+                            <div className="flex justify-end gap-2">
+                              <button onClick={cancelEditingGD} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                              <button onClick={saveEditingGD} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2">
+                                <Icons.Save /> Save Changes
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // View mode
+                          <>
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-4 mb-2">
+                                  <span className="text-lg font-bold text-indigo-600">{gd.groupName}</span>
+                                  <span className="text-sm text-slate-500">{gd.timing}</span>
+
+                                  <select
+                                    value={gd.status}
+                                    onChange={(e) => handleUpdateGD(gd.id, 'status', e.target.value)}
+                                    className="text-xs border rounded px-2 py-1"
+                                  >
+                                    <option value="pending">Pending</option>
+                                    <option value="in-progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                  </select>
+                                </div>
+
+                                {gd.meetLink && (
+                                  <a href={gd.meetLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-sm">🔗 Join Meeting with this link</a>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <button onClick={() => startEditingGD(gd)} className="text-indigo-600 hover:text-indigo-800">
+                                  <Icons.Edit />
+                                </button>
+                                <button onClick={() => handleDeleteGD(gd.id)} className="text-red-600 hover:text-red-800">
+                                  <Icons.Trash />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="font-semibold text-sm mb-2">Students:</h4>
+                                {gd.students && gd.students.length > 0 ? (
+                                  <ul className="text-sm space-y-1">
+                                    {gd.students.map((student, idx) => (
+                                      <li key={idx} className="flex items-center gap-2">
+                                        <span>• {student.name}</span>
+                                        {student.attachment && (
+                                          <a href={student.attachment} target="_blank" rel="noopener noreferrer" className="text-indigo-600">
+                                            <Icons.Paperclip />
+                                          </a>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-sm text-slate-500">No students added</p>
+                                )}
+                              </div>
+
+                              <div>
+                                <h4 className="font-semibold text-sm mb-2">Panelists:</h4>
+                                {gd.panelists && gd.panelists.length > 0 ? (
+                                  <ul className="text-sm space-y-1">
+                                    {gd.panelists.map((panelist, idx) => (
+                                      <li key={idx}>• {panelist.name} ({panelist.phone})</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-sm text-slate-500">No panelists added</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {gd.spocs && (
+                              <div className="mt-3 pt-3 border-t">
+                                <span className="text-xs text-slate-600">SPOCs: {gd.spocs}</span>
+                              </div>
                             )}
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <button onClick={() => handleDeleteGD(gd.id)} className="text-red-600 hover:text-red-800">
-                              <Icons.Trash />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="font-semibold text-sm mb-2">Students:</h4>
-                            {gd.students && gd.students.length > 0 ? (
-                              <ul className="text-sm space-y-1">
-                                {gd.students.map((student, idx) => (
-                                  <li key={idx} className="flex items-center gap-2">
-                                    <span>• {student.name}</span>
-                                    {student.attachment && (
-                                      <a href={student.attachment} target="_blank" rel="noopener noreferrer" className="text-indigo-600">
-                                        <Icons.Paperclip />
-                                      </a>
-                                    )}
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="text-sm text-slate-500">No students added</p>
-                            )}
-                          </div>
-
-                          <div>
-                            <h4 className="font-semibold text-sm mb-2">Panelists:</h4>
-                            {gd.panelists && gd.panelists.length > 0 ? (
-                              <ul className="text-sm space-y-1">
-                                {gd.panelists.map((panelist, idx) => (
-                                  <li key={idx}>• {panelist.name} ({panelist.phone})</li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="text-sm text-slate-500">No panelists added</p>
-                            )}
-                          </div>
-                        </div>
-
-                        {gd.spocs && (
-                          <div className="mt-3 pt-3 border-t">
-                            <span className="text-xs text-slate-600">SPOCs: {gd.spocs}</span>
-                          </div>
+                          </>
                         )}
                       </div>
                     ))}
